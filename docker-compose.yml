@@ -1,0 +1,122 @@
+version: "3.8"
+
+services:
+  nginx-server:
+    container_name: nginx-server
+    build: ./nginx
+    volumes:
+      - type: bind
+        source: ./nginx/conf/nginx.conf
+        target: /etc/nginx/nginx.conf
+      - type: bind
+        source: ./nginx/conf/sites
+        target: /etc/nginx/sites-available
+      - type: bind
+        source: ./nginx/conf/conf.d
+        target: /etc/nginx/conf.d
+    environment:
+      - "TENANT_ID=1"
+    ports:
+      - 80:80
+      - 443:443
+      - 444:444
+      - 445:445
+    links:
+      - mongo:mongo
+      - api:api
+      - app:app
+      - system:system
+      - redis:redis
+      - mailhog:mailhog
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+  php:
+    container_name: php
+    build: ./php
+    volumes:
+      - type: bind
+        source: ./php
+        target: /var/www
+      - type: bind
+        source: ./php/php.ini
+        target: /usr/local/etc/php/php.ini-development
+    working_dir: /var/www
+    environment:
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.composer/vendor/bin:./vendor/bin"
+      - "PHP_IDE_CONFIG=serverName=default"
+      - "TENANT_ID=4"
+      - "MONGODB_CONNSTRING=mongodb://root:s2h11d85dhpUxvd@mongo"
+    ports:
+      - 9000:9000
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+  angular:
+    container_name: angular
+    build: ./angular
+    volumes:
+      - type: bind
+        source: ./angular
+        target: /usr/share/nginx/html
+    working_dir: /usr/share/nginx/html
+    ports:
+      - 4201:4201
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+  mongo:
+    container_name: mongo
+    build: ./mongo
+    volumes:
+      - type: bind
+        source: ./mongo/data/db
+        target: /data/db
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_DATABASE=demo
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=af3LPs4dbs!6g3gHwWi3hsdHhb
+      - MONGO_INITDB_USER=root
+      - MONGO_INITDB_PWD=af3LPs4dbs!6g3gHwWi3hsdHhb
+      - MONGO_DATA_DIR=/data/db
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+  redis:
+    container_name: redis
+    image: "redis:alpine"
+    command: redis-server --requirepass af3LPs4dbs!6g3gHwWi3hsdHhb
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_USERNAME=root
+      - REDIS_PASSWORD=af3LPs4dbs!6g3gHwWi3hsdHhb
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+  mailhog:
+    container_name: mailhog
+    ports:
+      - 1025:1025
+      - 8025:8025
+    image: mailhog/mailhog
+    environment:
+      - "MH_STORAGE=maildir"
+      - "MH_MAILDIR_PATH=/home/mailhog"
+      - "MH_HOSTNAME:mailhog"
+    volumes:
+      - ./mailhog:/home/mailhog
+    restart: unless-stopped
+    networks:
+      - demo-dev
+
+networks:
+  demo-dev:
